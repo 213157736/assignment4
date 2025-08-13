@@ -1,0 +1,31 @@
+////////////////////////////// Task 3(a) //////////////////////////
+<?php
+$s1="Hello World"; echo strrev($s1);
+$s2="PHP Is FUN";  echo strtolower($s2);
+$s3="SADC Countries"; echo strlen($s3);
+$s4="Apple,Banana,Cherry"; $parts=explode(",",$s4); print_r($parts);
+$s5="Echo! "; echo str_repeat($s5,3);
+?>
+
+////////////////////////////// Task 3(b) //////////////////////////
+<?php
+$today = new DateTime();
+echo $today->format('Y-m-d'); echo $today->format('Y');
+echo $today->format('F'); echo $today->format('l'); echo $today->format('W');
+$christmas = new DateTime('2025-12-25'); $diff = $today->diff($christmas);
+echo $diff->days;
+?>
+
+////////////////////////////// Task 3(c) //////////////////////////
+<?php
+$countries=["South Africa","Botswana","Namibia","Zimbabwe","Mozambique","Zambia","Tanzania","Lesotho","Eswatini","Malawi"];
+foreach($countries as $c){ echo $c."<br>"; }
+rsort($countries);
+foreach($countries as $c){ echo $c."<br>"; }
+?>
+
+////////////////////////////// Task 3(d) //////////////////////////
+<?php
+$capitals=["South Africa"=>"Pretoria","Botswana"=>"Gaborone","Namibia"=>"Windhoek","Zimbabwe"=>"Harare","Mozambique"=>"Maputo","Zambia"=>"Lusaka","Tanzania"=>"Dodoma","Lesotho"=>"Maseru","Eswatini"=>"Mbabane","Malawi"=>"Lilongwe"];
+if (isset($_POST['go3d'])){ $c=$_POST['c3']??""; if($c && isset($capitals[$c])) echo $capitals[$c]; }
+?>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Task 3 – Strings, DateTime, Arrays</title>
+</head>
+<body>
+<?php include 'menu.inc'; ?>
+
+<h2>Task 3</h2>
+
+<?php
+// ---------------- 3(a) string functions with own examples ----------------
+echo "<h3>Task 3(a) – String function demos</h3>";
+
+$s1 = "Hello World";
+echo "<p><strong>strrev</strong>: '$s1' → '" . strrev($s1) . "'</p>";
+echo "<p>Explanation: reverses character order in the string.</p>";
+
+$s2 = "PHP Is FUN";
+echo "<p><strong>strtolower</strong>: '$s2' → '" . strtolower($s2) . "'</p>";
+echo "<p>Explanation: converts every character to lowercase (useful for case-insensitive compare).</p>";
+
+$s3 = "SADC Countries";
+echo "<p><strong>strlen</strong>: '$s3' has " . strlen($s3) . " characters (spaces included).</p>";
+
+$s4 = "Apple,Banana,Cherry";
+$parts = explode(",", $s4);
+echo "<p><strong>explode</strong>: '$s4' → array ";
+echo "<code>[".implode(", ", $parts)."]</code></p>";
+echo "<p>Explanation: splits a string by a delimiter into an array.</p>";
+
+$s5 = "Echo! ";
+echo "<p><strong>str_repeat</strong>: '" . str_repeat($s5, 3) . "'</p>";
+echo "<p>Explanation: repeats a string N times (useful for padding/formatting).</p>";
+
+// ---------------- 3(b) DateTime ----------------
+echo "<h3>Task 3(b) – DateTime</h3>";
+$today = new DateTime(); // now
+echo "<p>Current date: ".$today->format('Y-m-d')."</p>";
+echo "<p>Year: ".$today->format('Y')."</p>";
+echo "<p>Month: ".$today->format('F')."</p>";
+echo "<p>Day of week: ".$today->format('l')."</p>";
+echo "<p>Week number: ".$today->format('W')."</p>";
+
+$christmas = new DateTime('2025-12-25');
+$diff = $today->diff($christmas);
+echo "<p>Days to next Christmas (25-Dec-2025): ".$diff->days." days</p>";
+
+// ---------------- 3(c) arrays and sorting ----------------
+echo "<h3>Task 3(c) – SADC array + foreach + descending sort</h3>";
+$countries = ["South Africa","Botswana","Namibia","Zimbabwe","Mozambique","Zambia","Tanzania","Lesotho","Eswatini","Malawi"];
+
+echo "<p><strong>Original:</strong></p>";
+foreach($countries as $c){ echo $c."<br>"; }
+
+rsort($countries);
+echo "<p><strong>Sorted (Z→A):</strong></p>";
+foreach($countries as $c){ echo $c."<br>"; }
+
+// ---------------- 3(d) associative array for capitals ----------------
+echo "<h3>Task 3(d) – Rewriting 2(c) with associative array</h3>";
+$capitals = [
+  "South Africa"=>"Pretoria","Botswana"=>"Gaborone","Namibia"=>"Windhoek","Zimbabwe"=>"Harare",
+  "Mozambique"=>"Maputo","Zambia"=>"Lusaka","Tanzania"=>"Dodoma","Lesotho"=>"Maseru",
+  "Eswatini"=>"Mbabane","Malawi"=>"Lilongwe"
+];
+?>
+<form method="post" action="">
+  <label for="c3">Select a SADC country:</label>
+  <select id="c3" name="c3" required>
+    <option value="">--Choose--</option>
+    <?php foreach(array_keys($capitals) as $c){
+      $sel = (($_POST['c3'] ?? "")===$c) ? "selected" : "";
+      echo "<option $sel value=\"$c\">$c</option>";
+    } ?>
+  </select>
+  <input type="submit" name="go3d" value="Show Capital">
+</form>
+<?php
+if (isset($_POST['go3d'])){
+  $c = $_POST['c3'] ?? "";
+  if ($c && isset($capitals[$c])){
+    echo "<p>You selected <strong>$c</strong>. Capital: <strong>{$capitals[$c]}</strong>.</p>";
+  }
+}
+?>
+
+<div style="text-align:center; margin-top:30px;">
+  <iframe src="task3.txt" width="1200" height="400">Your browser does not support iframes.</iframe>
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Assignment 4 – Menu</title>
+</head>
+<body>
+  <?php include 'menu.inc'; ?>
+  <h1>Assignment 4</h1>
+  <p>Select a task from the menu above.</p>
+</body>
+</html>

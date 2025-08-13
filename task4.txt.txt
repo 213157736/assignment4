@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Task 4 – School Tours (MVC)</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table { border-collapse: collapse; }
+    td, th { border:1px solid #ccc; padding:6px 8px; }
+    form { margin:8px 0; }
+  </style>
+</head>
+<body>
+<?php include 'menu.inc'; ?>
+
+<h2>Task 4 – Learners, Tours & Registrations (MVC in one file)</h2>
+
+<?php
+// ======================= CONFIG / DB =======================
+class DB {
+  public static function pdo(){
+    static $pdo=null;
+    if ($pdo) return $pdo;
+
+    // ---- CHANGE THESE FOR YOUR ONLINE HOST ----
+    $host = 'localhost';
+    $db   = 'school_tours';
+    $user = 'root';
+    $pass = '';
+    // -------------------------------------------
+    $dsn="mysql:host=$host;dbname=$db;charset=utf8mb4";
+    $pdo = new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+    return $pdo;
+  }
+}
+
+// ======================= MODELS ============================
+class LearnerModel {
+  private $db; function __construct($db){ $this->db=$db; }
+  function all(){ return $this->db->query("SELECT * FROM learners ORDER BY surname,name")->fetchAll(PDO::FETCH_ASSOC); }
+  function find($id){ $s=$this->db->prepare("SELECT * FROM learners WHERE id=?"); $s->execute([$id]); return $s->fetch(PDO::FETCH_ASSOC); }
+  function create($n,$s,$g){ $q=$this->db->prepare("INSERT INTO learners(name,surname,grade) VALUES(?,?,?)"); $q->execute([$n,$s,(int)$g]); }
+  function update($id,$n,$s,$g){ $q=$this->db->prepare("UPDATE learners SET name=?,surname=?,grade=? WHERE id=?"); $q->execute([$n,$s,(int)$g,(int)$id]); }
+  function delete($id){ $q=$this->db->prepare("DELETE FROM learners WHERE id=?"); $q->execute([(int)$id]); }
+}
+class TourModel {
+  private $db; function __construct($db){ $this->db=$db; }
+  function all(){ return $this->db->query("SELECT * FROM tours ORDER BY start_date")->fetchAll(PDO::FETCH_ASSOC); }
+  function find($id){ $s=$this->db->prepare("SELECT * FROM tours WHERE id=?"); $s->execute([$id]); return $s->fetch(PDO::FETCH_ASSOC); }
+  function create($t,$d,$s,$e,$c,$g){ $q=$this->db->prepare("INSERT INTO tours(title,description,start_date,end_date,cost,grade) VALUES(?,?,?,?,?,?)"); $q->execute([$t,$d,$s,$e,(float)$c,(int)$g]); }
+  function update($id,$t,$d,$s,$e,$c,$g){ $q=$this->db->prepare("UPDATE tours SET title=?,description=?,start_date=?,end_date=?,cost=?,grade=? WHERE id=?"); $q->execute([$t,$d,$s,$e,(float)$c,(int)$g,(int)$id]); }
+  function delete($id){ $q=$this->db->prepare("DELETE FROM tours WHERE id=?"); $q->execute([(int)$id]); }
+}
+class RegistrationModel {
+  private $db; function __construct($db){ $this->db=$db; }
+  function all(){
+    $sql="SELECT r.id,l.name,l.surname,l.grade,t.title,t.grade AS tour_grade
+          FROM registrations r
+          JOIN learners l ON l.id=r.learner_id
+          JOIN tours t ON t.id=r.tour_id
+          ORDER BY t.start_date,l.surname";
+    return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+  }
+  function create($learner_id,$tour_id){
+    // enforce grade match
+    $l=$this->db->prepare("SELECT grade FROM learners WHERE id=?"); $l->execute([(int)$learner_id]); $lg=$l->fetchColumn();
+    $t=$this->db->prepare("SELECT grade FROM tours WHERE id=?");    $t->execute([(int)$tour_id]);   $tg=$t->fetchColumn();
+    if ($lg===false || $tg===false) throw new Exception("Invalid learner or tour.");
+    if ((int)$lg !== (int)$tg) throw new Exception("Learner grade ($lg) must match tour grade ($tg).");
+    $q=$this->db->prepare("INSERT INTO registrations(learner_id,tour_id) VALUES(?,?)"); $q->execute([(int)$learner_id,(int)$tour_id]);
+  }
+  function delete($id){ $q=$this->db->prepare("DELETE FROM registrations WHERE id=?"); $q->execute([(int)$id]); }
+  function summary(){
+    $sql="SELECT t.id,t.title,t.grade,COUNT(r.id) AS total
+          FROM tours t LEFT JOIN registrations r ON r.tour_id=t.id
+          GROUP BY t.id,t.title,t.grade ORDER BY t.grade,t.start_date";
+    return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+  }
+  function tourDetails($tour_id){
+    $sql="SELECT l.name,l.surname,l.grade FROM registrations r
+          JOIN learners l ON l.id=r.learner_id WHERE r.tour_id=? ORDER BY l.surname";
+    $s=$this->db->prepare($sql); $s->execute([(int)$tour_id]); return $s->fetchAll(PDO::FETCH_ASSOC);
+  }
+}
+
+// ======================= CONTROLLERS =======================
+class LearnerController {
+  private $m; function __construct($m){ $this->m=$m; }
+  function index(){
+    $rows = $this->m->all();
+    include __DIR__.'/_view_learners.php';
+  }
+  function store(){ $this->m->create($_POST['name']??"",$this->strip($_POST['surname']??""),$_POST['grade']??""); header("Location: ?section=learners"); exit; }
+  function update(){ $this->m->update($_POST['id'],$_POST['name'],$_POST['surname'],$_POST['grade']); header("Location: ?section=learners"); exit; }
+  function delete(){ $this->m->delete($_GET['id']); header("Location: ?section=learners"); exit; }
+  private function strip($s){ return $s; }
+}
+class TourController {
+  private $m; function __construct($m){ $this->m=$m; }
+  function index(){ $rows=$this->m->all(); include __DIR__.'/_view_tours.php'; }
+  function store(){ $this->m->create($_POST['title'],$_POST['description'],$_POST['start'],$_POST['end'],$_POST['cost'],$_POST['grade']); header("Location: ?section=tours"); exit; }
+  function update(){ $this->m->update($_POST['id'],$_POST['title'],$_POST['description'],$_POST['start'],$_POST['end'],$_POST['cost'],$_POST['grade']); header("Location: ?section=tours"); exit; }
+  function delete(){ $this->m->delete($_GET['id']); header("Location: ?section=tours"); exit; }
+}
+class RegistrationController {
+  private $rm,$lm,$tm;
+  function __construct($rm,$lm,$tm){ $this->rm=$rm; $this->lm=$lm; $this->tm=$tm; }
+  function index(){
+    $rows = $this->rm->all();
+    $learners = $this->lm->all();
+    $tours = $this->tm->all();
+    $error = $_GET['err'] ?? "";
+    include __DIR__.'/_view_regs.php';
+  }
+  function store(){
+    try{
+      $this->rm->create($_POST['learner_id'], $_POST['tour_id']);
+      header("Location: ?section=registrations"); exit;
+    }catch(Exception $e){
+      header("Location: ?section=registrations&err=".urlencode($e->getMessage())); exit;
+    }
+  }
+  function delete(){ $this->rm->delete($_GET['id']); header("Location: ?section=registrations"); exit; }
+  function summary(){
+    $sum = $this->rm->summary();
+    $tid = isset($_GET['tour_id']) ? (int)$_GET['tour_id'] : 0;
+    $details = $tid ? $this->rm->tourDetails($tid) : [];
+    include __DIR__.'/_view_summary.php';
+  }
+}
+
+// ======================= SIMPLE ROUTER =====================
+$db = DB::pdo();
+$learners = new LearnerModel($db);
+$tours    = new TourModel($db);
+$regs     = new RegistrationModel($db);
+
+$L = new LearnerController($learners);
+$T = new TourController($tours);
+$R = new RegistrationController($regs,$learners,$tours);
+
+$section = $_GET['section'] ?? 'home';
+$action  = $_GET['action']  ?? 'index';
+
+if ($section==='learners'){
+  if ($action==='store'  && $_SERVER['REQUEST_METHOD']==='POST') $L->store();
+  if ($action==='update' && $_SERVER['REQUEST_METHOD']==='POST') $L->update();
+  if ($action==='delete') $L->delete();
+  $L->index();
+} elseif ($section==='tours'){
+  if ($action==='store'  && $_SERVER['REQUEST_METHOD']==='POST') $T->store();
+  if ($action==='update' && $_SERVER['REQUEST_METHOD']==='POST') $T->update();
+  if ($action==='delete') $T->delete();
+  $T->index();
+} elseif ($section==='registrations'){
+  if ($action==='store'  && $_SERVER['REQUEST_METHOD']==='POST') $R->store();
+  if ($action==='delete') $R->delete();
+  $R->index();
+} elseif ($section==='summary'){
+  $R->summary();
+} else {
+  echo "<p>Use the links below to manage data:</p>
+  <ul>
+    <li><a href='?section=learners'>Manage Learners</a></li>
+    <li><a href='?section=tours'>Manage Tours</a></li>
+    <li><a href='?section=registrations'>Register Learners for Tours</a></li>
+    <li><a href='?section=summary'>View Summary</a></li>
+  </ul>";
+}
+
+// ======================= VIEWS (inline files) ===============
+?>
+<?php /* _view_learners.php */ ?>
+<?php if(false){} else { ?>
+<h3>Learners</h3>
+<form method="post" action="?section=learners&action=store">
+  <strong>Add learner:</strong><br>
+  <input name="name" placeholder="Name" required>
+  <input name="surname" placeholder="Surname" required>
+  <input name="grade" type="number" min="8" max="12" placeholder="Grade" required>
+  <button type="submit">Save</button>
+</form>
+
+<table>
+  <tr><th>Name</th><th>Surname</th><th>Grade</th><th>Actions</th></tr>
+  <?php foreach($rows as $r): ?>
+    <tr>
+      <td><?=htmlspecialchars($r['name'])?></td>
+      <td><?=htmlspecialchars($r['surname'])?></td>
+      <td><?=$r['grade']?></td>
+      <td>
+        <form style="display:inline" method="post" action="?section=learners&action=update">
+          <input type="hidden" name="id" value="<?=$r['id']?>">
+          <input name="name" value="<?=htmlspecialchars($r['name'])?>" required>
+          <input name="surname" value="<?=htmlspecialchars($r['surname'])?>" required>
+          <input name="grade" type="number" min="8" max="12" value="<?=$r['grade']?>" required>
+          <button type="submit">Update</button>
+        </form>
+        <a href="?section=learners&action=delete&id=<?=$r['id']?>" onclick="return confirm('Delete learner?')">Delete</a>
+      </td>
+    </tr>
+  <?php endforeach; ?>
+</table>
+<?php } ?>
+
+<?php /* _view_tours.php */ ?>
+<?php if(false){} else { ?>
+<h3>Tours</h3>
+<form method="post" action="?section=tours&action=store">
+  <strong>Add tour:</strong><br>
+  <input name="title" placeholder="Title" required>
+  <input name="description" placeholder="Description">
+  <input name="start" type="date" required>
+  <input name="end" type="date" required>
+  <input name="cost" type="number" step="0.01" placeholder="Cost" required>
+  <input name="grade" type="number" min="8" max="12" placeholder="Grade" required>
+  <button type="submit">Save</button>
+</form>
+
+<table>
+  <tr><th>Title</th><th>Grade</th><th>Dates</th><th>Cost</th><th>Actions</th></tr>
+  <?php foreach($rows as $r): ?>
+    <tr>
+      <td><?=htmlspecialchars($r['title'])?></td>
+      <td><?=$r['grade']?></td>
+      <td><?=$r['start_date']?> → <?=$r['end_date']?></td>
+      <td>R <?=$r['cost']?></td>
+      <td>
+        <form style="display:inline" method="post" action="?section=tours&action=update">
+          <input type="hidden" name="id" value="<?=$r['id']?>">
+          <input name="title" value="<?=htmlspecialchars($r['title'])?>" required>
+          <input name="description" value="<?=htmlspecialchars($r['description'])?>">
+          <input name="start" type="date" value="<?=$r['start_date']?>" required>
+          <input name="end" type="date" value="<?=$r['end_date']?>" required>
+          <input name="cost" type="number" step="0.01" value="<?=$r['cost']?>" required>
+          <input name="grade" type="number" min="8" max="12" value="<?=$r['grade']?>" required>
+          <button type="submit">Update</button>
+        </form>
+        <a href="?section=tours&action=delete&id=<?=$r['id']?>" onclick="return confirm('Delete tour?')">Delete</a>
+      </td>
+    </tr>
+  <?php endforeach; ?>
+</table>
+<?php } ?>
+
+<?php /* _view_regs.php */ ?>
+<?php if(false){} else { ?>
+<h3>Registrations</h3>
+<?php if(!empty($error)) echo "<p style='color:#b00020'><strong>$error</strong></p>"; ?>
+<form method="post" action="?section=registrations&action=store">
+  <label>Learner:</label>
+  <select name="learner_id" required>
+    <option value="">--Choose--</option>
+    <?php foreach($learners as $l){
+      echo "<option value='{$l['id']}'>".htmlspecialchars($l['surname'].", ".$l['name'])." (Gr {$l['grade']})</option>";
+    } ?>
+  </select>
+  <label>Tour:</label>
+  <select name="tour_id" required>
+    <option value="">--Choose--</option>
+    <?php foreach($tours as $t){
+      echo "<option value='{$t['id']}'>".htmlspecialchars($t['title'])." (Gr {$t['grade']})</option>";
+    } ?>
+  </select>
+  <button type="submit">Register</button>
+</form>
+
+<table>
+  <tr><th>Learner</th><th>Grade</th><th>Tour</th><th>Actions</th></tr>
+  <?php foreach($rows as $r): ?>
+    <tr>
+      <td><?=htmlspecialchars($r['surname'].", ".$r['name'])?></td>
+      <td><?=$r['grade']?></td>
+      <td><?=htmlspecialchars($r['title'])?></td>
+      <td><a href="?section=registrations&action=delete&id=<?=$r['id']?>" onclick="return confirm('Delete registration?')">Delete</a></td>
+    </tr>
+  <?php endforeach; ?>
+</table>
+<?php } ?>
+
+<?php /* _view_summary.php */ ?>
+<?php if(false){} else { ?>
+<h3>Summary</h3>
+<table>
+  <tr><th>Tour</th><th>Grade</th><th>Total Learners</th><th>Details</th></tr>
+  <?php foreach($sum as $row): ?>
+    <tr>
+      <td><?=htmlspecialchars($row['title'])?></td>
+      <td><?=$row['grade']?></td>
+      <td><?=$row['total']?></td>
+      <td><a href="?section=summary&tour_id=<?=$row['id']?>">View Learners</a></td>
+    </tr>
+  <?php endforeach; ?>
+</table>
+
+<?php if($tid): ?>
+  <h4>Registered learners for selected tour</h4>
+  <?php if(!$details){ echo "<p>No learners registered.</p>"; } else { ?>
+    <ul>
+      <?php foreach($details as $d){ echo "<li>".htmlspecialchars($d['surname'].", ".$d['name'])." (Gr {$d['grade']})</li>"; } ?>
+    </ul>
+  <?php } ?>
+<?php endif; ?>
+<?php } ?>
+
+<!-- iframe with all task 4 code -->
+<div style="text-align:center; margin-top:30px;">
+  <iframe src="task4.txt" width="1200" height="400">Your browser does not support iframes.</iframe>
+</div>
+</body>
+</html>

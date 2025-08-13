@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Task 2 – Loops, Ternary, Switch</title>
+</head>
+<body>
+<?php include 'menu.inc'; ?>
+
+<h2>Task 2</h2>
+
+<!-- (a) For loop: numbers, sum, average -->
+<h3>Task 2(a): For loop – n numbers, sum, average</h3>
+<form method="get" action="">
+  <label for="n">Enter a positive integer (n):</label>
+  <input id="n" name="n" type="number" min="1" required
+         value="<?php echo htmlspecialchars($_GET['n'] ?? ''); ?>">
+  <input type="submit" name="go_a" value="Generate">
+</form>
+
+<?php
+if (isset($_GET['go_a'])){
+  $n = (int)($_GET['n'] ?? 0);
+  if ($n > 0){
+    $nums = [];
+    $sum = 0;
+    for($i=1; $i<=$n; $i++){ $nums[]=$i; $sum += $i; }
+    $avg = $sum / $n;
+    echo "<p>Task 2(a):<br>"
+       . implode(", ", $nums) . " ($n numbers)<br>"
+       . "$sum (sum of $n numbers)<br>"
+       . ($avg) . " (average of $n numbers)</p>";
+  } else {
+    echo "<p style='color:#b00020'>Please enter n ≥ 1.</p>";
+  }
+}
+?>
+
+<hr>
+
+<!-- (b) Ternary function: final mark -->
+<h3>Task 2(b): Final Mark with Ternary Operator (no form)</h3>
+<?php
+function final_mark($exam, $year){
+  // if exam<40 -> final=exam; else 75% exam + 25% year
+  return ($exam < 40) ? $exam : (0.75*$exam + 0.25*$year);
+}
+// required invocations:
+$cases = [[35,50],[40,55],[55,60]];
+foreach($cases as [$e,$y]){
+  $f = final_mark($e,$y);
+  echo "Exam: $e%, Year: $y% → Final: $f%<br>";
+}
+?>
+
+<hr>
+
+<!-- (c) SADC dropdown + switch (show one capital) -->
+<h3>Task 2(c): SADC country → capital (switch)</h3>
+<form method="post" action="">
+  <label for="country">Select a SADC country:</label>
+  <select id="country" name="country" required>
+    <option value="">--Choose--</option>
+    <?php
+      $opts = ["South Africa","Botswana","Namibia","Zimbabwe","Mozambique","Zambia","Tanzania","Lesotho","Eswatini","Malawi"];
+      foreach($opts as $c){
+        $sel = (($_POST['country'] ?? "")===$c) ? "selected" : "";
+        echo "<option $sel value=\"$c\">$c</option>";
+      }
+    ?>
+  </select>
+  <input type="submit" name="go_c" value="Show Capital">
+</form>
+
+<?php
+if (isset($_POST['go_c'])){
+  $country = $_POST['country'] ?? "";
+  switch ($country){
+    case "South Africa": $cap="Pretoria"; break;
+    case "Botswana":     $cap="Gaborone"; break;
+    case "Namibia":      $cap="Windhoek"; break;
+    case "Zimbabwe":     $cap="Harare"; break;
+    case "Mozambique":   $cap="Maputo"; break;
+    case "Zambia":       $cap="Lusaka"; break;
+    case "Tanzania":     $cap="Dodoma"; break;
+    case "Lesotho":      $cap="Maseru"; break;
+    case "Eswatini":     $cap="Mbabane"; break;
+    case "Malawi":       $cap="Lilongwe"; break;
+    default:             $cap="Unknown";
+  }
+  echo "<p>You selected <strong>$country</strong>. Capital: <strong>$cap</strong>.</p>";
+}
+?>
+
+<div style="text-align:center; margin-top:30px;">
+  <iframe src="task2.txt" width="1200" height="400">Your browser does not support iframes.</iframe>
+</div>
+</body>
+</html>
